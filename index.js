@@ -1,7 +1,7 @@
-const pidCrypt = require('pidcrypt')
-const pidCryptUtil = require('pidcrypt/pidcrypt_util')
-require('pidcrypt/rsa')
-require('pidcrypt/asn1')
+import pidCrypt from 'pidcrypt'
+import pidCryptUtil from 'pidcrypt/pidcrypt_util.js'
+import 'pidcrypt/rsa.js'
+import 'pidcrypt/asn1.js'
 
 let public_key =
 	'-----BEGIN RSA PUBLIC KEY-----\n\
@@ -76,7 +76,7 @@ function certParser(cert) {
 	return retObj
 }
 
-const BuildXML = (PAN, ExpDate, CVV) => {
+function buildXML(PAN, ExpDate, CVV) {
 	PAN = IETrim(PAN)
 	ExpDate = IETrim(ExpDate)
 	CVV = IETrim(CVV)
@@ -130,4 +130,4 @@ const BuildXML = (PAN, ExpDate, CVV) => {
 	}
 }
 
-module.exports = BuildXML
+export default buildXML
