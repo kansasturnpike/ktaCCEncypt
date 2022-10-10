@@ -1,9 +1,10 @@
-import pidCrypt from 'pidcrypt'
-import pidCryptUtil from 'pidcrypt/pidcrypt_util.js'
-import 'pidcrypt/rsa.js'
-import 'pidcrypt/asn1.js'
+import {pidCrypt, pidCryptUtil} from './pidcript/index.js'
+// import pidCrypt from 'pidcrypt'
+// import pidCryptUtil from 'pidcrypt/pidcrypt_util.js'
+// import 'pidcrypt/rsa.js'
+// import 'pidcrypt/asn1.js'
 
-let public_key =
+const public_key =
 	'-----BEGIN RSA PUBLIC KEY-----\n\
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0QmKXJTE0G7aO2j32Pui\n\
 xgiNDyAoprnLbihUxl0mnPQHoxFNeiHB0eUEjcRvShTYbzFOYa78mTpYgx0ztvwo\n\
@@ -14,117 +15,108 @@ uek6g4uUcrgXBEXifOXyT5Z7Gb202nPhclOXMwZIstGpygkXEpN+n4JTkEA9b1Fk\n\
 3wIDAQAB\n\
 -----END RSA PUBLIC KEY-----'
 
-function isNumber(n) {
-	return !isNaN(parseFloat(n)) && isFinite(n)
+function isNumber(e) {
+	return !isNaN(parseFloat(e)) && isFinite(e)
 }
-
-function IETrim(input) {
-	return input.replace(/\s/g, '')
+function IETrim(e) {
+	return e.replace(/^\s+|\s+$/g, '')
 }
-
-function certParser(cert) {
-	let lines = cert.split('\n')
-	let read = false
-	let b64 = false
-	let end = false
-	let flag = ''
-	let retObj = {}
-	retObj.info = ''
-	retObj.salt = ''
-	retObj.iv
-	retObj.b64 = ''
-	retObj.aes = false
-	retObj.mode = ''
-	retObj.bits = 0
-	for (let i = 0; i < lines.length; i++) {
-		flag = lines[i].substr(0, 9)
-		if (i == 1 && flag != 'Proc-Type' && flag.indexOf('M') == 0)
-			//unencrypted cert?
-			b64 = true
-		switch (flag) {
+function certParser(e) {
+	var t = e.split('\n')
+	var n = false
+	var r = false
+	var i = false
+	var s = ''
+	var o = {}
+	o.info = ''
+	o.salt = ''
+	o.iv
+	o.b64 = ''
+	o.aes = false
+	o.mode = ''
+	o.bits = 0
+	for (var u = 0; u < t.length; u++) {
+		s = t[u].substr(0, 9)
+		if (u == 1 && s != 'Proc-Type' && s.indexOf('M') == 0) r = true
+		switch (s) {
 			case '-----BEGI':
-				read = true
+				n = true
 				break
 			case 'Proc-Type':
-				if (read) retObj.info = lines[i]
+				if (n) o.info = t[u]
 				break
 			case 'DEK-Info:':
-				if (read) {
-					let tmp = lines[i].split(',')
-					let dek = tmp[0].split(': ')
-					let aes = dek[1].split('-')
-					retObj.aes = aes[0] == 'AES' ? true : false
-					retObj.mode = aes[2]
-					retObj.bits = parseInt(aes[1])
-					retObj.salt = tmp[1].substr(0, 16)
-					retObj.iv = tmp[1]
+				if (n) {
+					var a = t[u].split(',')
+					var f = a[0].split(': ')
+					var l = f[1].split('-')
+					o.aes = l[0] == 'AES' ? true : false
+					o.mode = l[2]
+					o.bits = parseInt(l[1])
+					o.salt = a[1].substr(0, 16)
+					o.iv = a[1]
 				}
 				break
 			case '':
-				if (read) b64 = true
+				if (n) r = true
 				break
 			case '-----END ':
-				if (read) {
-					b64 = false
-					read = false
+				if (n) {
+					r = false
+					n = false
 				}
 				break
 			default:
-				if (read && b64) retObj.b64 += pidCryptUtil.stripLineFeeds(lines[i])
+				if (n && r) o.b64 += pidCryptUtil.stripLineFeeds(t[u])
 		}
 	}
-	return retObj
+	return o
 }
 
-function buildXML(PAN, ExpDate, CVV) {
-	PAN = IETrim(PAN)
-	ExpDate = IETrim(ExpDate)
-	CVV = IETrim(CVV)
-	// validation
-	if (PAN == '') {
+function buildXML(e, t, n) {
+	e = IETrim(e)
+	t = IETrim(t)
+	n = IETrim(n)
+	if (e == '') {
 		return 'Account Number blank'
 	}
-	if (ExpDate == '') {
+	if (t == '') {
 		return 'Expiration Date blank'
 	}
-	if (CVV == '') {
+	if (n == '') {
 		return 'CVV blank'
 	}
-	if (!isNumber(PAN)) {
+	if (!isNumber(e)) {
 		return 'Account Number non-Numeric'
 	}
 
-	let params = {}
-	params = certParser(public_key)
-	if (params.b64) {
-		let key = pidCryptUtil.decodeBase64(params.b64)
-		let rsa = new pidCrypt.RSA()
-		let asn = pidCrypt.ASN1.decode(pidCryptUtil.toByteArray(key))
-		let tree = asn.toHexTree()
-		rsa.setPublicKeyFromASN(tree)
-
-		let xmlstring
-		let KSN = 'TEMPUSRSA2014'
-		let EncType = 'RSA'
-		let OAEPAdded = 'FALSE'
-		let CardDataSource = 'KEY'
-
-		let EncryptedPAN = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(rsa.encryptRaw(PAN))), 64))
-		let EncryptedExpDate = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(rsa.encryptRaw(ExpDate))), 64))
-		let EncryptedCVV = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(rsa.encryptRaw(CVV))), 64))
-
-		xmlstring = '<CARDEVENTPARAMS>'
-		xmlstring = xmlstring + '<ENCDVCDEVICETYPE>' + '6' + '</ENCDVCDEVICETYPE>'
-		xmlstring = xmlstring + '<ENCDVCKSN>' + KSN + '</ENCDVCKSN>'
-		xmlstring = xmlstring + '<ENCDVCENCTYPE>' + EncType + '</ENCDVCENCTYPE>'
-		xmlstring = xmlstring + '<ENCDVCENCOAEPPADDED>' + OAEPAdded + '</ENCDVCENCOAEPPADDED>'
-		xmlstring = xmlstring + '<ENCDVCCARDDATASOURCE>' + CardDataSource + '</ENCDVCCARDDATASOURCE>'
-		xmlstring = xmlstring + '<ENCDVCENCRYPTEDPAN>' + EncryptedPAN + '</ENCDVCENCRYPTEDPAN>'
-		xmlstring = xmlstring + '<ENCDVCENCRYPTEDEXP>' + EncryptedExpDate + '</ENCDVCENCRYPTEDEXP>'
-		xmlstring = xmlstring + '<ENCDVCENCRYPTEDCVV>' + EncryptedCVV + '</ENCDVCENCRYPTEDCVV>'
-		xmlstring = xmlstring + '</CARDEVENTPARAMS>'
-
-		return xmlstring
+	let i = {}
+	i = certParser(public_key)
+	if (i.b64) {
+		let s = pidCryptUtil.decodeBase64(i.b64)
+		let o = new pidCrypt.RSA()
+		let u = pidCrypt.ASN1.decode(pidCryptUtil.toByteArray(s))
+		let a = u.toHexTree()
+		o.setPublicKeyFromASN(a)
+		let f
+		let l = 'TEMPUSRSA2014'
+		let c = 'RSA'
+		let h = 'FALSE'
+		let p = 'KEY'
+		let d = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(o.encryptRaw(e))), 64))
+		let v = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(o.encryptRaw(t))), 64))
+		let m = pidCryptUtil.stripLineFeeds(pidCryptUtil.fragment(pidCryptUtil.encodeBase64(pidCryptUtil.convertFromHex(o.encryptRaw(n))), 64))
+		f = '<CARDEVENTPARAMS>'
+		f = f + '<ENCDVCDEVICETYPE>' + '6' + '</ENCDVCDEVICETYPE>'
+		f = f + '<ENCDVCKSN>' + l + '</ENCDVCKSN>'
+		f = f + '<ENCDVCENCTYPE>' + c + '</ENCDVCENCTYPE>'
+		f = f + '<ENCDVCENCOAEPPADDED>' + h + '</ENCDVCENCOAEPPADDED>'
+		f = f + '<ENCDVCCARDDATASOURCE>' + p + '</ENCDVCCARDDATASOURCE>'
+		f = f + '<ENCDVCENCRYPTEDPAN>' + d + '</ENCDVCENCRYPTEDPAN>'
+		f = f + '<ENCDVCENCRYPTEDEXP>' + v + '</ENCDVCENCRYPTEDEXP>'
+		f = f + '<ENCDVCENCRYPTEDCVV>' + m + '</ENCDVCENCRYPTEDCVV>'
+		f = f + '</CARDEVENTPARAMS>'
+		return f
 	} else {
 		return 'No Public Key Found'
 	}
