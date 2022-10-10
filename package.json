@@ -1,6 +1,6 @@
 {
   "name": "kta-cc-encrypt",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Tool for creating an encrypted XML for credit cards",
   "main": "index.js",
   "type": "module",
@@ -12,8 +12,5 @@
     "url": "https://github.com/kansasturnpike/ktaCCEncypt.git"
   },
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "pidcrypt": "^0.0.33"
-  }
+  "license": "ISC"
 }
